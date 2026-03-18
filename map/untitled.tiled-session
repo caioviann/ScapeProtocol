@@ -1,0 +1,22 @@
+{
+    "activeFile": "",
+    "expandedProjectPaths": [
+    ],
+    "fileStates": {
+    },
+    "last.imagePath": "/Users/caiohenrique/Documents/ScapeProtocol/ScapeProtocol/Assets/tiles_laboratory_LandOfPixels/16px",
+    "map.height": 44,
+    "map.tileHeight": 16,
+    "map.tileWidth": 16,
+    "map.width": 70,
+    "openFiles": [
+    ],
+    "project": "untitled.tiled-project",
+    "recentFiles": [
+    ],
+    "tileset.embedInMap": true,
+    "tileset.tileSize": {
+        "height": 16,
+        "width": 16
+    }
+}
