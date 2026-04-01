@@ -1,39 +1,44 @@
 {
     "activeFile": "untitled.tmx",
     "expandedProjectPaths": [
+        "."
     ],
     "fileStates": {
+        "": {
+            "scaleInDock": 1
+        },
         "untitled.tmx": {
             "scale": 1.5,
-            "selectedLayer": 0,
+            "selectedLayer": 2,
             "viewCenter": {
-                "x": 328.33333333333326,
-                "y": 230
+                "x": 388.66666666666663,
+                "y": 215.99999999999997
             }
         },
         "untitled.tmx#spriteSheet_fireEffect03_21x26": {
-            "scaleInDock": 1
+            "scaleInDock": 1.5
         },
         "untitled.tmx#spriteSheet_lightBulbSmallAnimation_16x16": {
-            "scaleInDock": 1
+            "scaleInDock": 1.5
         },
         "untitled.tmx#spriteSheet_lightingBulb02_68x73": {
-            "scaleInDock": 1
+            "scaleInDock": 1.5
         },
         "untitled.tmx#spriteSheet_tiledLiquids_16x16": {
-            "scaleInDock": 1
+            "scaleInDock": 1.5
         },
         "untitled.tmx#tilesFloor": {
-            "scaleInDock": 1
+            "scaleInDock": 1.5
         },
         "untitled.tmx#tilesStuff": {
-            "scaleInDock": 1
+            "scaleInDock": 1.5,
+            "scaleInEditor": 1
         },
         "untitled.tmx#tilesWalls": {
-            "scaleInDock": 1
+            "scaleInDock": 1.5
         }
     },
-    "last.imagePath": "/Users/caiohenrique/Documents/ScapeProtocol/ScapeProtocol/Assets/tiles_laboratory_LandOfPixels/16px",
+    "last.imagePath": "/Users/caiohenrique/Documents/ScapeProtocol/ScapeProtocol/Assets",
     "map.height": 44,
     "map.lastUsedFormat": "tmx",
     "map.tileHeight": 16,
