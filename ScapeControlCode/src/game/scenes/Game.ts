@@ -1,9 +1,9 @@
-import { Scene, GameObjects } from 'phaser';
+import { Scene } from 'phaser';
 
 export class Game extends Scene
 {
     camera: Phaser.Cameras.Scene2D.Camera;
-    player!: GameObjects.Sprite;
+    player!: Phaser.Physics.Arcade.Sprite;
     cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
     playerSpeed = 200;
     mapWidth = 0;
@@ -36,13 +36,11 @@ export class Game extends Scene
         }
 
         // Cria as camadas do tilemap conhecidas
-        const layerNames = ['fundo', 'parede', 'objetosDeCenário'];
-        layerNames.forEach(name => {
-            const layerData = map.getLayer(name);
-            if (layerData) {
-                map.createLayer(name, tilesets, 0, 0);
-            }
-        });
+        map.createLayer('fundo', tilesets, 0, 0);
+        const paredeLayer = map.createLayer('parede', tilesets, 0, 0) as Phaser.Tilemaps.TilemapLayer;
+        map.createLayer('objetosDeCenário', tilesets, 0, 0);
+
+        paredeLayer.setCollisionBetween(1585, 2000);
 
         // Set camera bounds to map size
         this.camera.setBounds(0, 0, map.widthInPixels, map.heightInPixels);
@@ -81,8 +79,13 @@ export class Game extends Scene
         // Cria o player no centro do mapa
         const spawnX = this.mapWidth / 2;
         const spawnY = this.mapHeight / 2;
-        this.player = this.add.sprite(spawnX, spawnY, 'playerFront', 0);
+        this.player = this.physics.add.sprite(spawnX, spawnY, 'playerFront', 0);
         this.player.setDepth(10);
+        this.player.setCollideWorldBounds(true);
+        const playerBody = this.player.body as Phaser.Physics.Arcade.Body;
+        playerBody.setSize(16, 32);
+
+        this.physics.add.collider(this.player, paredeLayer);
 
         // Camera segue o jogador
         this.camera.startFollow(this.player, true, 0.1, 0.1);
@@ -91,39 +94,45 @@ export class Game extends Scene
         this.cursors = this.input.keyboard!.createCursorKeys();
     }
 
-    update (_time: number, delta: number)
+    update (_time: number, _delta: number)
     {
         if (!this.player || !this.cursors) {
             return;
         }
 
-        const speed = this.playerSpeed * (delta / 1000);
+        const speed = this.playerSpeed;
+        const body = this.player.body as Phaser.Physics.Arcade.Body;
+        body.setVelocity(0);
         let moved = false;
 
         if (this.cursors.left?.isDown) {
-            this.player.x -= speed;
+            body.setVelocityX(-speed);
             this.player.anims.play('walkLeft', true);
             this.player.flipX = false;
             moved = true;
         }
         else if (this.cursors.right?.isDown) {
-            this.player.x += speed;
+            body.setVelocityX(speed);
             this.player.anims.play('walkRight', true);
             this.player.flipX = false;
             moved = true;
         }
 
         if (this.cursors.up?.isDown) {
-            this.player.y -= speed;
+            body.setVelocityY(-speed);
             this.player.anims.play('walkUp', true);
             this.player.flipX = false;
             moved = true;
         }
         else if (this.cursors.down?.isDown) {
-            this.player.y += speed;
+            body.setVelocityY(speed);
             this.player.anims.play('walkDown', true);
             this.player.flipX = false;
             moved = true;
+        }
+
+        if (moved) {
+            body.velocity.normalize().scale(speed);
         }
 
         if (!moved) {
