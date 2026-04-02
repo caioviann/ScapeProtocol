@@ -58,15 +58,22 @@ export class Game extends Scene
         });
 
         this.anims.create({
-            key: 'walkRight',
+            key: 'walkLeft',
             frames: this.anims.generateFrameNumbers('playerFront', { start: 3, end: 5 }),
             frameRate: 8,
             repeat: -1
         });
 
         this.anims.create({
-            key: 'walkUp',
+            key: 'walkRight',
             frames: this.anims.generateFrameNumbers('playerBack', { start: 0, end: 2 }),
+            frameRate: 8,
+            repeat: -1
+        });
+
+        this.anims.create({
+            key: 'walkUp',
+            frames: this.anims.generateFrameNumbers('playerBack', { start: 3, end: 5 }),
             frameRate: 8,
             repeat: -1
         });
@@ -95,14 +102,14 @@ export class Game extends Scene
 
         if (this.cursors.left?.isDown) {
             this.player.x -= speed;
-            this.player.anims.play('walkRight', true);
+            this.player.anims.play('walkLeft', true);
             this.player.flipX = false;
             moved = true;
         }
         else if (this.cursors.right?.isDown) {
             this.player.x += speed;
             this.player.anims.play('walkRight', true);
-            this.player.flipX = true;
+            this.player.flipX = false;
             moved = true;
         }
 
