@@ -1,5 +1,5 @@
 {
-    "activeFile": "untitled.tmx",
+    "activeFile": "mapaTeste.tmj",
     "expandedProjectPaths": [
         "."
     ],
@@ -7,12 +7,70 @@
         "": {
             "scaleInDock": 1
         },
-        "untitled.tmx": {
-            "scale": 1.5,
-            "selectedLayer": 2,
+        "mapaTeste.json": {
+            "scale": 0.6353125,
+            "selectedLayer": 0,
             "viewCenter": {
-                "x": 388.66666666666663,
-                "y": 215.99999999999997
+                "x": 559.5671421544516,
+                "y": 352.5823905558288
+            }
+        },
+        "mapaTeste.json#spriteSheet_fireEffect03_21x26": {
+            "scaleInDock": 1
+        },
+        "mapaTeste.json#spriteSheet_lightBulbSmallAnimation_16x16": {
+            "scaleInDock": 1
+        },
+        "mapaTeste.json#spriteSheet_lightingBulb02_68x73": {
+            "scaleInDock": 1
+        },
+        "mapaTeste.json#spriteSheet_tiledLiquids_16x16": {
+            "scaleInDock": 1
+        },
+        "mapaTeste.json#tilesFloor": {
+            "scaleInDock": 1
+        },
+        "mapaTeste.json#tilesStuff": {
+            "scaleInDock": 1
+        },
+        "mapaTeste.json#tilesWalls": {
+            "scaleInDock": 1
+        },
+        "mapaTeste.tmj": {
+            "scale": 1,
+            "selectedLayer": 1,
+            "viewCenter": {
+                "x": 422.5,
+                "y": 587
+            }
+        },
+        "mapaTeste.tmj#spriteSheet_fireEffect03_21x26": {
+            "scaleInDock": 1.5
+        },
+        "mapaTeste.tmj#spriteSheet_lightBulbSmallAnimation_16x16": {
+            "scaleInDock": 1.5
+        },
+        "mapaTeste.tmj#spriteSheet_lightingBulb02_68x73": {
+            "scaleInDock": 1.5
+        },
+        "mapaTeste.tmj#spriteSheet_tiledLiquids_16x16": {
+            "scaleInDock": 1.5
+        },
+        "mapaTeste.tmj#tilesFloor": {
+            "scaleInDock": 1.5
+        },
+        "mapaTeste.tmj#tilesStuff": {
+            "scaleInDock": 1.5
+        },
+        "mapaTeste.tmj#tilesWalls": {
+            "scaleInDock": 1.5
+        },
+        "untitled.tmx": {
+            "scale": 1,
+            "selectedLayer": 1,
+            "viewCenter": {
+                "x": 610.5,
+                "y": 356
             }
         },
         "untitled.tmx#spriteSheet_fireEffect03_21x26": {
@@ -28,27 +86,31 @@
             "scaleInDock": 1.5
         },
         "untitled.tmx#tilesFloor": {
-            "scaleInDock": 1.5
+            "scaleInDock": 1.5,
+            "scaleInEditor": 1
         },
         "untitled.tmx#tilesStuff": {
             "scaleInDock": 1.5,
             "scaleInEditor": 1
         },
         "untitled.tmx#tilesWalls": {
-            "scaleInDock": 1.5
+            "scaleInDock": 1.5,
+            "scaleInEditor": 1
         }
     },
     "last.imagePath": "/Users/caiohenrique/Documents/ScapeProtocol/ScapeProtocol/Assets",
     "map.height": 44,
-    "map.lastUsedFormat": "tmx",
+    "map.lastUsedFormat": "json",
     "map.tileHeight": 16,
     "map.tileWidth": 16,
     "map.width": 70,
     "openFiles": [
-        "untitled.tmx"
+        "mapaTeste.tmj"
     ],
     "project": "untitled.tiled-project",
     "recentFiles": [
+        "mapaTeste.tmj",
+        "mapaTeste.json",
         "untitled.tmx"
     ],
     "tileset.embedInMap": true,
