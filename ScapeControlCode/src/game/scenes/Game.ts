@@ -1,7 +1,6 @@
 import { Scene } from 'phaser';
 
-export class Game extends Scene
-{
+export class Game extends Scene {
     camera: Phaser.Cameras.Scene2D.Camera;
     player!: Phaser.Physics.Arcade.Sprite;
     cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
@@ -9,13 +8,11 @@ export class Game extends Scene
     mapWidth = 0;
     mapHeight = 0;
 
-    constructor ()
-    {
+    constructor() {
         super('Game');
     }
 
-    create ()
-    {
+    create() {
         this.camera = this.cameras.main;
         this.camera.setBackgroundColor(0x000000);
 
@@ -86,7 +83,8 @@ export class Game extends Scene
         this.player.setDepth(10);
         this.player.setCollideWorldBounds(true);
         const playerBody = this.player.body as Phaser.Physics.Arcade.Body;
-        playerBody.setSize(16, 32);
+        playerBody.setSize(16, 8);
+        playerBody.setOffset(0, 24);
 
         this.physics.add.collider(this.player, paredeLayer);
 
@@ -97,8 +95,7 @@ export class Game extends Scene
         this.cursors = this.input.keyboard!.createCursorKeys();
     }
 
-    update (_time: number, _delta: number)
-    {
+    update(_time: number, _delta: number) {
         if (!this.player || !this.cursors) {
             return;
         }
