@@ -42,8 +42,6 @@ export class Game extends Scene {
 
         paredeLayer.setCollisionBetween(1585, 2000);
 
-        // Set camera bounds to map size
-        this.camera.setBounds(0, 0, map.widthInPixels, map.heightInPixels);
         this.mapWidth = map.widthInPixels;
         this.mapHeight = map.heightInPixels;
 
@@ -76,6 +74,9 @@ export class Game extends Scene {
             repeat: -1
         });
 
+        // Define os limites do mundo de física para o tamanho do mapa
+        this.physics.world.setBounds(0, 0, map.widthInPixels, map.heightInPixels);
+
         // Cria o player no centro do mapa
         const spawnX = this.mapWidth / 2;
         const spawnY = this.mapHeight / 2;
@@ -89,7 +90,9 @@ export class Game extends Scene {
         this.physics.add.collider(this.player, paredeLayer);
 
         // Camera segue o jogador
-        this.camera.startFollow(this.player, true, 0.1, 0.1);
+        this.cameras.main.setBounds(0, 0, map.widthInPixels, map.heightInPixels);
+        this.cameras.main.startFollow(this.player, true);
+        this.cameras.main.setRoundPixels(true);
 
         // Cria controles de seta
         this.cursors = this.input.keyboard!.createCursorKeys();
@@ -139,12 +142,5 @@ export class Game extends Scene {
             this.player.anims.stop();
             this.player.setFrame(0);
         }
-
-        // Mantém o jogador dentro dos limites do mapa
-        const minX = this.player.width / 2;
-        const minY = this.player.height / 2;
-
-        this.player.x = Phaser.Math.Clamp(this.player.x, minX, this.mapWidth - this.player.width / 2);
-        this.player.y = Phaser.Math.Clamp(this.player.y, minY, this.mapHeight - this.player.height / 2);
     }
 }
