@@ -34,7 +34,6 @@ export class Game extends Scene {
 
         // Cria as camadas do tilemap conhecidas
         map.createLayer('fundo', tilesets, 0, 0);
-        map.createLayer('gradePiso', tilesets, 0, 0);
         const janelaLayer = map.createLayer('janela', tilesets, 0, 0) as Phaser.Tilemaps.TilemapLayer;
         janelaLayer.setDepth(15);
         const paredeLayer = map.createLayer('parede', tilesets, 0, 0) as Phaser.Tilemaps.TilemapLayer;
@@ -75,9 +74,6 @@ export class Game extends Scene {
             repeat: -1
         });
 
-        // Define os limites do mundo de física para o tamanho do mapa
-        this.physics.world.setBounds(0, 0, map.widthInPixels, map.heightInPixels);
-
         // Cria o player no centro do mapa
         const spawnX = this.mapWidth / 2;
         const spawnY = this.mapHeight / 2;
@@ -92,8 +88,7 @@ export class Game extends Scene {
 
         // Camera segue o jogador
         this.cameras.main.setBounds(0, 0, map.widthInPixels, map.heightInPixels);
-        this.cameras.main.startFollow(this.player, true);
-        this.cameras.main.setRoundPixels(true);
+        this.cameras.main.startFollow(this.player);
 
         // Cria controles de seta
         this.cursors = this.input.keyboard!.createCursorKeys();
@@ -142,6 +137,14 @@ export class Game extends Scene {
         if (!moved) {
             this.player.anims.stop();
             this.player.setFrame(0);
+            this.player.setTexture('playerFront');
         }
+
+        // Mantém o jogador dentro dos limites do mapa
+        const minX = this.player.width / 2;
+        const minY = this.player.height / 2;
+
+        this.player.x = Phaser.Math.Clamp(this.player.x, minX, this.mapWidth - this.player.width / 2);
+        this.player.y = Phaser.Math.Clamp(this.player.y, minY, this.mapHeight - this.player.height / 2);
     }
 }
