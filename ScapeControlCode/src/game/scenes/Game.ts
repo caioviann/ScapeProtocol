@@ -34,6 +34,7 @@ export class Game extends Scene {
 
         // Cria as camadas do tilemap conhecidas
         map.createLayer('fundo', tilesets, 0, 0);
+        map.createLayer('gradePiso', tilesets, 0, 0);
         const janelaLayer = map.createLayer('janela', tilesets, 0, 0) as Phaser.Tilemaps.TilemapLayer;
         janelaLayer.setDepth(15);
         const paredeLayer = map.createLayer('parede', tilesets, 0, 0) as Phaser.Tilemaps.TilemapLayer;
