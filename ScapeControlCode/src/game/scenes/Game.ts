@@ -1,4 +1,10 @@
 import { Scene } from 'phaser';
+import { mqttService, mqttTopic, mqttClientId } from '../mqttService';
+
+interface RemotePlayer {
+    id: string;
+    sprite: Phaser.GameObjects.Sprite;
+}
 
 export class Game extends Scene {
     camera: Phaser.Cameras.Scene2D.Camera;
@@ -7,6 +13,8 @@ export class Game extends Scene {
     playerSpeed = 200;
     mapWidth = 0;
     mapHeight = 0;
+    remotePlayers: RemotePlayer[] = [];
+    mqttTopic!: string;
 
     constructor() {
         super('Game');
@@ -90,6 +98,48 @@ export class Game extends Scene {
         this.cameras.main.setBounds(0, 0, map.widthInPixels, map.heightInPixels);
         this.cameras.main.startFollow(this.player);
 
+        this.mqttTopic = `${mqttTopic}/${this.sys.settings.key}`;
+
+        mqttService.subscribe(this.mqttTopic, () => {
+            console.log(`${mqttClientId} subscribed to ${this.mqttTopic}`);
+        });
+
+        const messageHandler = (_topic: string, message: Buffer) => {
+            const data = JSON.parse(message.toString());
+
+            if (data.player.id === mqttClientId) {
+                return;
+            }
+
+            const existsAt = this.remotePlayers.findIndex((rp) => rp.id === data.player.id);
+            if (existsAt === -1) {
+                const sprite = this.add.sprite(data.player.x, data.player.y, data.player.texture, data.player.frame).setDepth(5);
+                sprite.flipX = data.player.flip.x;
+                sprite.flipY = data.player.flip.y;
+                if (data.player.animation) {
+                    sprite.anims.play(data.player.animation, true);
+                }
+                this.remotePlayers.push({ id: data.player.id, sprite });
+            } else {
+                const remotePlayer = this.remotePlayers[existsAt];
+                remotePlayer.sprite.setTexture(data.player.texture, data.player.frame);
+                remotePlayer.sprite.setPosition(data.player.x, data.player.y);
+                remotePlayer.sprite.flipX = data.player.flip.x;
+                remotePlayer.sprite.flipY = data.player.flip.y;
+                if (data.player.animation) {
+                    remotePlayer.sprite.anims.play(data.player.animation, true);
+                }
+            }
+        };
+
+        mqttService.on('message', messageHandler);
+
+        this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+            mqttService.off('message', messageHandler);
+            mqttService.unsubscribe(this.mqttTopic);
+            this.remotePlayers = [];
+        });
+
         // Cria controles de seta
         this.cursors = this.input.keyboard!.createCursorKeys();
     }
@@ -146,5 +196,23 @@ export class Game extends Scene {
 
         this.player.x = Phaser.Math.Clamp(this.player.x, minX, this.mapWidth - this.player.width / 2);
         this.player.y = Phaser.Math.Clamp(this.player.y, minY, this.mapHeight - this.player.height / 2);
+
+        mqttService.publish(
+            this.mqttTopic,
+            JSON.stringify({
+                player: {
+                    id: mqttClientId,
+                    x: this.player.x,
+                    y: this.player.y,
+                    texture: this.player.texture.key,
+                    frame: this.player.frame.name,
+                    flip: {
+                        x: this.player.flipX,
+                        y: this.player.flipY,
+                    },
+                    animation: this.player.anims.currentAnim ? this.player.anims.currentAnim.key : null,
+                },
+            }),
+        );
     }
 }
