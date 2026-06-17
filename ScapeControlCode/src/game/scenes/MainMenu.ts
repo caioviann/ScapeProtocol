@@ -227,10 +227,10 @@ export class MainMenu extends Scene {
 
     private joinRoom() {
         this.prepareJoinRoom();
-        this.enterRoom();
+        this.enterRoom(2);
     }
 
-    private enterRoom() {
+    private enterRoom(playerNumber = 1) {
         const room = sanitizeRoomCode(this.selectedRoom || this.roomInput);
         const playerCount = this.getSelectedRoomPlayerCount(room);
 
@@ -243,7 +243,7 @@ export class MainMenu extends Scene {
         setMqttRoomName(this.roomNameInput);
         this.publishRoomPresence(playerCount + 1);
         this.scene.start('Game', {
-            playerNumber: playerCount === 0 ? 1 : 2
+            playerNumber
         });
     }
 
