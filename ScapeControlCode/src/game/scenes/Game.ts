@@ -1,5 +1,5 @@
 import { Scene } from 'phaser';
-import { mqttService, mqttTopic, mqttClientId } from '../mqttService';
+import { getMqttRoom, getMqttRoomName, getMqttTopic, getRoomsTopic, mqttService, mqttClientId, sanitizeRoomName } from '../mqttService';
 
 interface RemotePlayer {
     id: string;
@@ -80,9 +80,15 @@ export class Game extends Scene {
     mqttTopic!: string;
     private playerWasHit = false;
     private playerCharacter!: PlayerCharacter;
+    private playerNumber = 1;
+    private roomPresenceEvent?: Phaser.Time.TimerEvent;
 
     constructor() {
         super('Game');
+    }
+
+    init(data: { playerNumber?: number }) {
+        this.playerNumber = data.playerNumber ?? 1;
     }
 
     create() {
@@ -140,7 +146,7 @@ export class Game extends Scene {
         this.cameras.main.setBounds(0, 0, map.widthInPixels, map.heightInPixels);
         this.cameras.main.startFollow(this.player);
 
-        this.mqttTopic = `${mqttTopic}/${this.sys.settings.key}`;
+        this.mqttTopic = getMqttTopic(this.sys.settings.key);
 
         mqttService.subscribe(this.mqttTopic, () => {
             console.log(`${mqttClientId} subscribed to ${this.mqttTopic}`);
@@ -189,10 +195,19 @@ export class Game extends Scene {
             this.remotePlayers = [];
             this.enemies = [];
             this.playerWasHit = false;
+            this.roomPresenceEvent?.remove(false);
+            this.roomPresenceEvent = undefined;
         });
 
         // Cria controles de seta
         this.cursors = this.input.keyboard!.createCursorKeys();
+
+        this.publishRoomPresence();
+        this.roomPresenceEvent = this.time.addEvent({
+            delay: 1500,
+            loop: true,
+            callback: () => this.publishRoomPresence()
+        });
     }
 
     update(time: number, _delta: number) {
@@ -272,6 +287,27 @@ export class Game extends Scene {
         this.updateEnemies(time);
     }
 
+    private publishRoomPresence() {
+        const room = getMqttRoom();
+
+        if (!room) {
+            return;
+        }
+
+        mqttService.publish(
+            getRoomsTopic(room),
+            JSON.stringify({
+                room,
+                name: sanitizeRoomName(getMqttRoomName()) || `Sala ${room}`,
+                players: Math.min(this.remotePlayers.length + 1, 2),
+                maxPlayers: 2,
+                owner: mqttClientId,
+                updatedAt: Date.now()
+            }),
+            { retain: true }
+        );
+    }
+
     private setupRadioactiveSpriteOrigin(sprite: Phaser.GameObjects.Sprite) {
         this.applyRadioactiveSpriteOrigin(sprite);
         sprite.on(Phaser.Animations.Events.ANIMATION_UPDATE, () => {
@@ -295,7 +331,7 @@ export class Game extends Scene {
         const params = new URLSearchParams(window.location.search);
         const character = params.get('character');
         const player = params.get('player');
-        const isRadioactive = character === 'radioactive' || player === '2';
+        const isRadioactive = character === 'radioactive' || player === '2' || this.playerNumber === 2;
 
         if (isRadioactive) {
             return {
@@ -516,6 +552,8 @@ export class Game extends Scene {
         }
 
         this.playerWasHit = true;
-        this.scene.start('GameOver');
+        this.scene.start('GameOver', {
+            playerNumber: this.playerNumber
+        });
     }
 }
