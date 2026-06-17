@@ -41,6 +41,44 @@ export class Preloader extends Scene
             frameWidth: 16,
             frameHeight: 32
         });
+        this.load.spritesheet('radioactiveFrontRight', 'person/characters_radioactiveFrontRight.png', {
+            frameWidth: 26,
+            frameHeight: 41
+        });
+        this.load.spritesheet('radioactiveLeftBack', 'person/characters_radioactiveLeftBack.png', {
+            frameWidth: 26,
+            frameHeight: 41
+        });
+
+        this.load.spritesheet('slimeIdle', 'NPCs/Slime/idle.png', {
+            frameWidth: 156,
+            frameHeight: 156
+        });
+        this.load.spritesheet('slimeWalk', 'NPCs/Slime/walk.png', {
+            frameWidth: 156,
+            frameHeight: 156
+        });
+        this.load.spritesheet('ratIdle', 'NPCs/Rat/idle.png', {
+            frameWidth: 70,
+            frameHeight: 70
+        });
+        this.load.spritesheet('ratRun', 'NPCs/Rat/run.png', {
+            frameWidth: 70,
+            frameHeight: 70
+        });
+        this.load.spritesheet('batFly', 'NPCs/Bat/fly.png', {
+            frameWidth: 87,
+            frameHeight: 87
+        });
+        this.load.spritesheet('mimicIdle', 'NPCs/Mimic/Idle_closed.png', {
+            frameWidth: 146,
+            frameHeight: 146
+        });
+        this.load.spritesheet('mimicWalk', 'NPCs/Mimic/walk.png', {
+            frameWidth: 146,
+            frameHeight: 146
+        });
+
         // Load tileset images for the map
         this.load.image('spriteSheet_fireEffect03_21x26', 'spriteSheet_fireEffect03_21x26.png');
         this.load.image('spriteSheet_lightBulbSmallAnimation_16x16', 'spriteSheet_lightBulbSmallAnimation_16x16.png');

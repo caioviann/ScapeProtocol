@@ -5,10 +5,16 @@ export class GameOver extends Scene
     camera: Phaser.Cameras.Scene2D.Camera;
     background: Phaser.GameObjects.Image;
     gameover_text : Phaser.GameObjects.Text;
+    private playerNumber = 1;
 
     constructor ()
     {
         super('GameOver');
+    }
+
+    init(data: { playerNumber?: number })
+    {
+        this.playerNumber = data.playerNumber ?? 1;
     }
 
     create ()
@@ -27,9 +33,9 @@ export class GameOver extends Scene
         this.gameover_text.setOrigin(0.5);
 
         this.input.once('pointerdown', () => {
-
-            this.scene.start('MainMenu');
-
+            this.scene.start('Game', {
+                playerNumber: this.playerNumber
+            });
         });
     }
 }
