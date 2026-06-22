@@ -10,8 +10,6 @@ Documento oficial de especificação de nível e mecânicas stealth para a fase 
 
 ## 📝 Visão Geral do Game
 
-> **Premissa:** Após um experimento biológico falhar, o laboratório entrou em escuridão e lockdown total. Dois cientistas desarmados precisam cooperar no escuro para encontrar a Célula de Energia e abrir a porta de fuga **LV.3** antes de serem pegos pelas criaturas.
-
 *   **Estilo de Jogo:** Stealth Cooperativo (2 Jogadores).
 *   **Combate:** Inexistente. Foco total em fuga e evasão.
 *   **Ambiente:** Mapa escuro com iluminação dinâmica situacional (faíscas e brilho biológico).
@@ -27,10 +25,10 @@ Documento oficial de especificação de nível e mecânicas stealth para a fase 
 
 ---
 
-## 🗺️ Detalhamento das Zonas (Mapa: `Screenshot 2026-06-22 at 08.48.21.png`)
+## 🗺️ Detalhamento das Zonas
 
 ### 🟥 Zona A: Ponto de Escape (Canto Superior Esquerdo)
-*   **Objetivo:** Sobreviver ao início do lockdown e destravar a porta **LV.3**.
+*   **Objetivo:** Sobreviver ao início do lockdown e destravar a porta.
 *   **Mecânica:** O terminal principal está sem energia. Requer uma *Célula de Energia* vinda da Zona C.
 *   **Cooperação:** O jogador que interagir com o terminal pode acionar sobrecargas nas bobinas para criar distrações sonoras para o parceiro.
 
@@ -54,7 +52,7 @@ Documento oficial de especificação de nível e mecânicas stealth para a fase 
 2. **Distração:** Jogador 1 usa o painel para estalar uma bobina; Jogador 2 passa agachado pelo Rato.
 3. **Coleta:** Jogador 2 desvia dos Slimes lentos na Zona C e pega a Célula de Energia.
 4. **Retorno Tênue:** Jogador 2 volta pela Zona B (onde os Slimes já mudaram de posição).
-5. **Clímax:** Célula inserida, porta LV.3 abrindo faz barulho e atrai o Rato para uma perseguição final.
+5. **Clímax:** Célula inserida, porta abrindo faz barulho e atrai o Rato para uma perseguição final.
 
 ---
 
