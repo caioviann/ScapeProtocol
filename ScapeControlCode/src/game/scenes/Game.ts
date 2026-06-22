@@ -82,6 +82,8 @@ export class Game extends Scene {
     private playerCharacter!: PlayerCharacter;
     private playerNumber = 1;
     private roomPresenceEvent?: Phaser.Time.TimerEvent;
+    private darknessOverlay?: Phaser.GameObjects.Rectangle;
+    private playerLightMask?: Phaser.GameObjects.Graphics;
 
     constructor() {
         super('Game');
@@ -113,6 +115,7 @@ export class Game extends Scene {
 
         // Cria as camadas do tilemap conhecidas
         map.createLayer('fundo', tilesets, 0, 0);
+        map.createLayer('gradePiso', tilesets, 0, 0);
         const janelaLayer = map.createLayer('janela', tilesets, 0, 0) as Phaser.Tilemaps.TilemapLayer;
         janelaLayer.setDepth(15);
         const paredeLayer = map.createLayer('parede', tilesets, 0, 0) as Phaser.Tilemaps.TilemapLayer;
@@ -141,6 +144,7 @@ export class Game extends Scene {
 
         this.physics.add.collider(this.player, paredeLayer);
         this.createEnemies(paredeLayer);
+        this.createPlayerLight();
 
         // Camera segue o jogador
         this.cameras.main.setBounds(0, 0, map.widthInPixels, map.heightInPixels);
@@ -195,6 +199,10 @@ export class Game extends Scene {
             this.remotePlayers = [];
             this.enemies = [];
             this.playerWasHit = false;
+            this.darknessOverlay?.destroy();
+            this.playerLightMask?.destroy();
+            this.darknessOverlay = undefined;
+            this.playerLightMask = undefined;
             this.roomPresenceEvent?.remove(false);
             this.roomPresenceEvent = undefined;
         });
@@ -264,6 +272,7 @@ export class Game extends Scene {
 
         this.player.x = Phaser.Math.Clamp(this.player.x, minX, this.mapWidth - this.player.width / 2);
         this.player.y = Phaser.Math.Clamp(this.player.y, minY, this.mapHeight - this.player.height / 2);
+        this.updatePlayerLight();
 
         mqttService.publish(
             this.mqttTopic,
@@ -285,6 +294,29 @@ export class Game extends Scene {
         );
 
         this.updateEnemies(time);
+    }
+
+    private createPlayerLight() {
+        this.playerLightMask = new Phaser.GameObjects.Graphics(this);
+        const mask = this.playerLightMask.createGeometryMask();
+        mask.setInvertAlpha(true);
+
+        this.darknessOverlay = this.add.rectangle(0, 0, this.mapWidth, this.mapHeight, 0x000000, 0.95)
+            .setOrigin(0)
+            .setDepth(1000)
+            .setMask(mask);
+
+        this.updatePlayerLight();
+    }
+
+    private updatePlayerLight() {
+        if (!this.playerLightMask || !this.player) {
+            return;
+        }
+
+        this.playerLightMask.clear();
+        this.playerLightMask.fillStyle(0xffffff);
+        this.playerLightMask.fillCircle(this.player.x, this.player.y, 50);
     }
 
     private publishRoomPresence() {
