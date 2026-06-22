@@ -1,6 +1,6 @@
 # ScapeProtocol
 ### Premissa:
-O ScapeProtocol foi corrompido. Após um vazamento biológico catastrófico, as luzes do laboratório subterrâneo se apagaram, restando apenas sistemas de emergência e escuridão total. Não há armas, não há munição e não há como revidar. Dois cientistas sobreviventes precisam usar a escuridão, a furtividade e a coordenação mecânica para escapar de duas ameaças mutantes que dominam os corredores, ativar o terminal principal e abrir a porta de quarentena LV.3 antes que o oxigênio acabe. Tocar em qualquer criatura é morte instantânea.
+O ScapeProtocol foi corrompido. Após um vazamento biológico catastrófico, as luzes do laboratório subterrâneo se apagaram, restando apenas sistemas de emergência e escuridão total. Não há armas, não há munição e não há como revidar. Dois cientistas sobreviventes precisam usar a escuridão, a furtividade e a coordenação mecânica para escapar de duas ameaças mutantes que dominam os corredores, ativar o terminal principal e abrir a porta de quarentena antes que o oxigênio acabe. Tocar em qualquer criatura é morte instantânea.
 
 # ScapeProtocol - Documento de Level Design
 
