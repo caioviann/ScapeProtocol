@@ -79,6 +79,8 @@ export class Preloader extends Scene
             frameHeight: 146
         });
         this.load.audio('backgroundMusic', '../sounds/music/Eduard_Perelyhin_-_Suspense_Ambient__amp__Outbreak.mp3');
+        this.load.audio('slimeSound', '../sounds/sounds_monsters/slime_sound.mp3');
+        this.load.audio('ratSound', '../sounds/sounds_monsters/rat_sound.mp3');
 
         // Load tileset images for the map
         this.load.image('spriteSheet_fireEffect03_21x26', 'spriteSheet_fireEffect03_21x26.png');

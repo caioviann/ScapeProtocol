@@ -42,11 +42,38 @@ const RADIOACTIVE_FRAME_ORIGINS: Record<string, Record<number, number>> = {
     }
 };
 
+const ENEMY_SOUND_SETTINGS: Record<string, {
+    distance: number;
+    cooldownMs: number;
+    minVolume: number;
+    maxVolume: number;
+    continuous?: boolean;
+}> = {
+    ratSound: {
+        distance: 90,
+        cooldownMs: 2400,
+        minVolume: 0.18,
+        maxVolume: 0.58
+    },
+    slimeSound: {
+        distance: 140,
+        cooldownMs: 9000,
+        minVolume: 0.45,
+        maxVolume: 0.85,
+        continuous: true
+    }
+};
+
+type AdjustableEnemySound = Phaser.Sound.BaseSound & {
+    setVolume(value: number): Phaser.Sound.BaseSound;
+};
+
 interface EnemyConfig {
     id: string;
     texture: string;
     idleAnimation: string;
     moveAnimation: string;
+    soundKey: string;
     x: number;
     y: number;
     speed: number;
@@ -84,6 +111,8 @@ export class Game extends Scene {
     private roomPresenceEvent?: Phaser.Time.TimerEvent;
     private darknessOverlay?: Phaser.GameObjects.Rectangle;
     private playerLightMask?: Phaser.GameObjects.Graphics;
+    private enemySoundCooldowns = new Map<string, number>();
+    private activeEnemySounds = new Map<string, AdjustableEnemySound>();
 
     constructor() {
         super('Game');
@@ -198,6 +227,8 @@ export class Game extends Scene {
             mqttService.unsubscribe(this.mqttTopic);
             this.remotePlayers = [];
             this.enemies = [];
+            this.enemySoundCooldowns.clear();
+            this.stopContinuousEnemySounds();
             this.playerWasHit = false;
             this.darknessOverlay?.destroy();
             this.playerLightMask?.destroy();
@@ -446,6 +477,7 @@ export class Game extends Scene {
                 texture: 'slimeIdle',
                 idleAnimation: 'slimeIdle',
                 moveAnimation: 'slimeWalk',
+                soundKey: 'slimeSound',
                 x: 728,
                 y: 152,
                 speed: 55,
@@ -458,6 +490,7 @@ export class Game extends Scene {
                 texture: 'slimeIdle',
                 idleAnimation: 'slimeIdle',
                 moveAnimation: 'slimeWalk',
+                soundKey: 'slimeSound',
                 x: 792,
                 y: 152,
                 speed: 55,
@@ -470,6 +503,7 @@ export class Game extends Scene {
                 texture: 'ratIdle',
                 idleAnimation: 'ratIdle',
                 moveAnimation: 'ratRun',
+                soundKey: 'ratSound',
                 x: 600,
                 y: 320,
                 speed: 85,
@@ -482,6 +516,7 @@ export class Game extends Scene {
                 texture: 'ratIdle',
                 idleAnimation: 'ratIdle',
                 moveAnimation: 'ratRun',
+                soundKey: 'ratSound',
                 x: 640,
                 y: 352,
                 speed: 85,
@@ -494,6 +529,7 @@ export class Game extends Scene {
                 texture: 'ratIdle',
                 idleAnimation: 'ratIdle',
                 moveAnimation: 'ratRun',
+                soundKey: 'ratSound',
                 x: 704,
                 y: 384,
                 speed: 85,
@@ -528,9 +564,25 @@ export class Game extends Scene {
     }
 
     private updateEnemies(time: number) {
+        const continuousSoundDistances = new Map<string, number>();
+
         for (const enemy of this.enemies) {
             const body = enemy.sprite.body as Phaser.Physics.Arcade.Body;
             const target = this.getClosestPlayer(enemy.sprite.x, enemy.sprite.y);
+            const localPlayerDistance = Phaser.Math.Distance.Between(enemy.sprite.x, enemy.sprite.y, this.player.x, this.player.y);
+            const soundSettings = ENEMY_SOUND_SETTINGS[enemy.config.soundKey];
+
+            if (soundSettings && localPlayerDistance <= soundSettings.distance) {
+                if (soundSettings.continuous) {
+                    const closestDistance = continuousSoundDistances.get(enemy.config.soundKey);
+
+                    if (closestDistance === undefined || localPlayerDistance < closestDistance) {
+                        continuousSoundDistances.set(enemy.config.soundKey, localPlayerDistance);
+                    }
+                } else {
+                    this.playEnemySound(enemy.config.soundKey, time, localPlayerDistance);
+                }
+            }
 
             let destination = enemy.wanderTarget;
             let speed = enemy.config.speed * 0.45;
@@ -557,6 +609,86 @@ export class Game extends Scene {
                 body.setVelocity(0);
                 enemy.sprite.anims.play(enemy.config.idleAnimation, true);
             }
+        }
+
+        for (const [soundKey, settings] of Object.entries(ENEMY_SOUND_SETTINGS)) {
+            if (!settings.continuous) {
+                continue;
+            }
+
+            const distance = continuousSoundDistances.get(soundKey);
+
+            if (distance === undefined) {
+                this.stopContinuousEnemySound(soundKey);
+            } else {
+                this.playContinuousEnemySound(soundKey, distance);
+            }
+        }
+    }
+
+    private playEnemySound(soundKey: string, time: number, distance: number) {
+        const soundSettings = ENEMY_SOUND_SETTINGS[soundKey];
+
+        if (!soundSettings) {
+            return;
+        }
+
+        const nextSoundAt = this.enemySoundCooldowns.get(soundKey) ?? 0;
+
+        if (time < nextSoundAt) {
+            return;
+        }
+
+        const proximity = 1 - Phaser.Math.Clamp(distance / soundSettings.distance, 0, 1);
+
+        this.sound.play(soundKey, {
+            volume: Phaser.Math.Linear(soundSettings.minVolume, soundSettings.maxVolume, proximity)
+        });
+        this.enemySoundCooldowns.set(soundKey, time + soundSettings.cooldownMs);
+    }
+
+    private playContinuousEnemySound(soundKey: string, distance: number) {
+        const soundSettings = ENEMY_SOUND_SETTINGS[soundKey];
+
+        if (!soundSettings) {
+            return;
+        }
+
+        const proximity = 1 - Phaser.Math.Clamp(distance / soundSettings.distance, 0, 1);
+        const volume = Phaser.Math.Linear(soundSettings.minVolume, soundSettings.maxVolume, proximity);
+        const sound = this.activeEnemySounds.get(soundKey) ?? this.sound.add(soundKey, {
+            loop: true,
+            volume
+        }) as AdjustableEnemySound;
+
+        this.activeEnemySounds.set(soundKey, sound);
+
+        if (sound.isPlaying) {
+            sound.setVolume(volume);
+        } else {
+            sound.play({
+                loop: true,
+                volume
+            });
+        }
+    }
+
+    private stopContinuousEnemySound(soundKey: string) {
+        const sound = this.activeEnemySounds.get(soundKey);
+
+        if (!sound) {
+            this.sound.stopByKey(soundKey);
+            return;
+        }
+
+        sound.stop();
+        this.sound.remove(sound);
+        this.activeEnemySounds.delete(soundKey);
+    }
+
+    private stopContinuousEnemySounds() {
+        for (const soundKey of this.activeEnemySounds.keys()) {
+            this.stopContinuousEnemySound(soundKey);
         }
     }
 
