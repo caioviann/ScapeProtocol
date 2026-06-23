@@ -58,6 +58,8 @@ export class MainMenu extends Scene {
     }
 
     create() {
+        this.startBackgroundMusic();
+
         this.add.image(512, 384, 'background').setDisplaySize(1024, 768).setAlpha(0.9);
         this.add.rectangle(512, 384, 1024, 768, 0x05080d, 0.62);
 
@@ -192,6 +194,17 @@ export class MainMenu extends Scene {
         button.on('pointerdown', onClick);
 
         return button;
+    }
+
+    private startBackgroundMusic() {
+        const music = this.sound.get('backgroundMusic') ?? this.sound.add('backgroundMusic', {
+            loop: true,
+            volume: 0.35
+        });
+
+        if (!music.isPlaying) {
+            music.play();
+        }
     }
 
     private createRoom() {
