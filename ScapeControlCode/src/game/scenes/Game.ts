@@ -73,10 +73,18 @@ interface SpawnPoint {
     y: number;
 }
 
+interface ObjectZone {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+}
+
 interface ObjectSpawns {
     players: SpawnPoint[];
     slimes: SpawnPoint[];
     rats: SpawnPoint[];
+    endGames: ObjectZone[];
 }
 
 const FALLBACK_PLAYER_SPAWNS = [
@@ -134,6 +142,7 @@ export class Game extends Scene {
     enemies: Enemy[] = [];
     mqttTopic!: string;
     private playerWasHit = false;
+    private gameEnded = false;
     private playerCharacter!: PlayerCharacter;
     private playerNumber = 1;
     private roomPresenceEvent?: Phaser.Time.TimerEvent;
@@ -176,10 +185,11 @@ export class Game extends Scene {
         const janelaLayer = map.createLayer('janela', tilesets, 0, 0) as Phaser.Tilemaps.TilemapLayer;
         janelaLayer.setDepth(15);
         const paredeLayer = map.createLayer('parede', tilesets, 0, 0) as Phaser.Tilemaps.TilemapLayer;
-        map.createLayer('objetosDeCenário', tilesets, 0, 0);
+        const objetosDeCenarioLayer = map.createLayer('objetosDeCenário', tilesets, 0, 0) as Phaser.Tilemaps.TilemapLayer;
         map.createLayer('ObjetosEmCimaDEObjetos', tilesets, 0, 0);
 
         paredeLayer.setCollisionBetween(1585, 2000);
+        objetosDeCenarioLayer.setCollisionByExclusion([-1, 0]);
 
         this.mapWidth = map.widthInPixels;
         this.mapHeight = map.heightInPixels;
@@ -200,8 +210,10 @@ export class Game extends Scene {
         playerBody.setSize(this.playerCharacter.body.width, this.playerCharacter.body.height);
         playerBody.setOffset(this.playerCharacter.body.offsetX, this.playerCharacter.body.offsetY);
 
-        this.physics.add.collider(this.player, paredeLayer);
-        this.createEnemies(paredeLayer, objectSpawns);
+        const collisionLayers = [paredeLayer, objetosDeCenarioLayer];
+        collisionLayers.forEach((layer) => this.physics.add.collider(this.player, layer));
+        this.createEnemies(collisionLayers, objectSpawns);
+        this.createEndGameZones(objectSpawns);
         this.createPlayerLight();
 
         // Camera segue o jogador
@@ -216,6 +228,11 @@ export class Game extends Scene {
 
         const messageHandler = (_topic: string, message: Buffer) => {
             const data = JSON.parse(message.toString());
+
+            if (data.gameEnded && data.id !== mqttClientId) {
+                this.finishGame(data.won === true);
+                return;
+            }
 
             if (!data.player) {
                 return;
@@ -259,6 +276,7 @@ export class Game extends Scene {
             this.enemySoundCooldowns.clear();
             this.stopContinuousEnemySounds();
             this.playerWasHit = false;
+            this.gameEnded = false;
             this.darknessOverlay?.destroy();
             this.playerLightMask?.destroy();
             this.darknessOverlay = undefined;
@@ -504,7 +522,8 @@ export class Game extends Scene {
         const spawns: ObjectSpawns = {
             players: [],
             slimes: [],
-            rats: []
+            rats: [],
+            endGames: []
         };
 
         objectLayer?.objects.forEach((object) => {
@@ -519,17 +538,25 @@ export class Game extends Scene {
                 spawns.slimes.push(point);
             } else if (object.name === 'spawn_rat') {
                 spawns.rats.push(point);
+            } else if (object.name === 'end_game') {
+                spawns.endGames.push({
+                    x: object.x ?? 0,
+                    y: object.y ?? 0,
+                    width: object.width ?? 0,
+                    height: object.height ?? 0
+                });
             }
         });
 
         return {
             players: spawns.players.length ? spawns.players : FALLBACK_PLAYER_SPAWNS,
             slimes: spawns.slimes.length ? spawns.slimes : FALLBACK_SLIME_SPAWNS,
-            rats: spawns.rats.length ? spawns.rats : FALLBACK_RAT_SPAWNS
+            rats: spawns.rats.length ? spawns.rats : FALLBACK_RAT_SPAWNS,
+            endGames: spawns.endGames
         };
     }
 
-    private createEnemies(paredeLayer: Phaser.Tilemaps.TilemapLayer, objectSpawns: ObjectSpawns) {
+    private createEnemies(collisionLayers: Phaser.Tilemaps.TilemapLayer[], objectSpawns: ObjectSpawns) {
         const slimeConfigs = objectSpawns.slimes.map((spawn, index): EnemyConfig => ({
             id: `slime-${index + 1}`,
             texture: 'slimeIdle',
@@ -569,7 +596,7 @@ export class Game extends Scene {
             body.setSize(config.body.width, config.body.height);
             body.setOffset(config.body.offsetX, config.body.offsetY);
 
-            this.physics.add.collider(sprite, paredeLayer);
+            collisionLayers.forEach((layer) => this.physics.add.collider(sprite, layer));
             this.physics.add.overlap(this.player, sprite, () => this.handlePlayerHit());
 
             return {
@@ -579,6 +606,19 @@ export class Game extends Scene {
                 wanderTarget: new Phaser.Math.Vector2(config.x, config.y),
                 nextWanderAt: 0
             };
+        });
+    }
+
+    private createEndGameZones(objectSpawns: ObjectSpawns) {
+        objectSpawns.endGames.forEach((zoneConfig) => {
+            const width = zoneConfig.width || 32;
+            const height = zoneConfig.height || 32;
+            const x = zoneConfig.width ? zoneConfig.x + width / 2 : zoneConfig.x;
+            const y = zoneConfig.height ? zoneConfig.y + height / 2 : zoneConfig.y;
+            const zone = this.add.zone(x, y, width, height);
+
+            this.physics.add.existing(zone, true);
+            this.physics.add.overlap(this.player, zone, () => this.handleEndGame());
         });
     }
 
@@ -735,8 +775,35 @@ export class Game extends Scene {
         }
 
         this.playerWasHit = true;
+        this.finishGame(false);
+    }
+
+    private handleEndGame() {
+        if (this.gameEnded) {
+            return;
+        }
+
+        mqttService.publish(
+            this.mqttTopic,
+            JSON.stringify({
+                gameEnded: true,
+                won: true,
+                id: mqttClientId
+            })
+        );
+        this.finishGame(true);
+    }
+
+    private finishGame(won: boolean) {
+        if (this.gameEnded) {
+            return;
+        }
+
+        this.gameEnded = true;
+        this.stopContinuousEnemySounds();
         this.scene.start('GameOver', {
-            playerNumber: this.playerNumber
+            playerNumber: this.playerNumber,
+            won
         });
     }
 }
