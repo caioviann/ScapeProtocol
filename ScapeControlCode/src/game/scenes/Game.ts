@@ -68,6 +68,34 @@ type AdjustableEnemySound = Phaser.Sound.BaseSound & {
     setVolume(value: number): Phaser.Sound.BaseSound;
 };
 
+interface SpawnPoint {
+    x: number;
+    y: number;
+}
+
+interface ObjectSpawns {
+    players: SpawnPoint[];
+    slimes: SpawnPoint[];
+    rats: SpawnPoint[];
+}
+
+const FALLBACK_PLAYER_SPAWNS = [
+    { x: 392, y: 472 },
+    { x: 438, y: 472 }
+];
+
+const FALLBACK_SLIME_SPAWNS = [
+    { x: 376, y: 120 },
+    { x: 324, y: 310 },
+    { x: 1028, y: 170 }
+];
+
+const FALLBACK_RAT_SPAWNS = [
+    { x: 120, y: 392 },
+    { x: 640, y: 672 },
+    { x: 990, y: 680 }
+];
+
 interface EnemyConfig {
     id: string;
     texture: string;
@@ -155,14 +183,15 @@ export class Game extends Scene {
 
         this.mapWidth = map.widthInPixels;
         this.mapHeight = map.heightInPixels;
+        const objectSpawns = this.getObjectSpawns(map);
 
         this.playerCharacter = this.getPlayerCharacter();
         this.createPlayerAnimations();
         this.createEnemyAnimations();
 
-        // Cria o player no centro do mapa
-        const spawnX = this.mapWidth / 2;
-        const spawnY = this.mapHeight / 2;
+        const playerSpawn = objectSpawns.players[this.playerNumber - 1] ?? objectSpawns.players[0];
+        const spawnX = playerSpawn.x;
+        const spawnY = playerSpawn.y;
         this.player = this.physics.add.sprite(spawnX, spawnY, this.playerCharacter.idleTexture, this.playerCharacter.idleFrame);
         this.player.setDepth(10);
         this.player.setCollideWorldBounds(true);
@@ -172,7 +201,7 @@ export class Game extends Scene {
         playerBody.setOffset(this.playerCharacter.body.offsetX, this.playerCharacter.body.offsetY);
 
         this.physics.add.collider(this.player, paredeLayer);
-        this.createEnemies(paredeLayer);
+        this.createEnemies(paredeLayer, objectSpawns);
         this.createPlayerLight();
 
         // Camera segue o jogador
@@ -470,74 +499,64 @@ export class Game extends Scene {
         createAnimation('mimicWalk', 'mimicWalk', 0, 5, 8);
     }
 
-    private createEnemies(paredeLayer: Phaser.Tilemaps.TilemapLayer) {
-        const enemyConfigs: EnemyConfig[] = [
-            {
-                id: 'slime-1',
-                texture: 'slimeIdle',
-                idleAnimation: 'slimeIdle',
-                moveAnimation: 'slimeWalk',
-                soundKey: 'slimeSound',
-                x: 728,
-                y: 152,
-                speed: 55,
-                chaseDistance: 190,
-                scale: 0.45,
-                body: { width: 58, height: 34, offsetX: 49, offsetY: 90 }
-            },
-            {
-                id: 'slime-2',
-                texture: 'slimeIdle',
-                idleAnimation: 'slimeIdle',
-                moveAnimation: 'slimeWalk',
-                soundKey: 'slimeSound',
-                x: 792,
-                y: 152,
-                speed: 55,
-                chaseDistance: 190,
-                scale: 0.45,
-                body: { width: 58, height: 34, offsetX: 49, offsetY: 90 }
-            },
-            {
-                id: 'rat-1',
-                texture: 'ratIdle',
-                idleAnimation: 'ratIdle',
-                moveAnimation: 'ratRun',
-                soundKey: 'ratSound',
-                x: 600,
-                y: 320,
-                speed: 85,
-                chaseDistance: 210,
-                scale: 0.75,
-                body: { width: 34, height: 20, offsetX: 18, offsetY: 38 }
-            },
-            {
-                id: 'rat-2',
-                texture: 'ratIdle',
-                idleAnimation: 'ratIdle',
-                moveAnimation: 'ratRun',
-                soundKey: 'ratSound',
-                x: 640,
-                y: 352,
-                speed: 85,
-                chaseDistance: 210,
-                scale: 0.75,
-                body: { width: 34, height: 20, offsetX: 18, offsetY: 38 }
-            },
-            {
-                id: 'rat-3',
-                texture: 'ratIdle',
-                idleAnimation: 'ratIdle',
-                moveAnimation: 'ratRun',
-                soundKey: 'ratSound',
-                x: 704,
-                y: 384,
-                speed: 85,
-                chaseDistance: 210,
-                scale: 0.75,
-                body: { width: 34, height: 20, offsetX: 18, offsetY: 38 }
+    private getObjectSpawns(map: Phaser.Tilemaps.Tilemap): ObjectSpawns {
+        const objectLayer = map.objects.find((layer) => layer.name.toLowerCase() === 'camadadeobjetos');
+        const spawns: ObjectSpawns = {
+            players: [],
+            slimes: [],
+            rats: []
+        };
+
+        objectLayer?.objects.forEach((object) => {
+            const point = {
+                x: object.x ?? 0,
+                y: object.y ?? 0
+            };
+
+            if (object.name === 'spawn_player') {
+                spawns.players.push(point);
+            } else if (object.name === 'spawn_slime') {
+                spawns.slimes.push(point);
+            } else if (object.name === 'spawn_rat') {
+                spawns.rats.push(point);
             }
-        ];
+        });
+
+        return {
+            players: spawns.players.length ? spawns.players : FALLBACK_PLAYER_SPAWNS,
+            slimes: spawns.slimes.length ? spawns.slimes : FALLBACK_SLIME_SPAWNS,
+            rats: spawns.rats.length ? spawns.rats : FALLBACK_RAT_SPAWNS
+        };
+    }
+
+    private createEnemies(paredeLayer: Phaser.Tilemaps.TilemapLayer, objectSpawns: ObjectSpawns) {
+        const slimeConfigs = objectSpawns.slimes.map((spawn, index): EnemyConfig => ({
+            id: `slime-${index + 1}`,
+            texture: 'slimeIdle',
+            idleAnimation: 'slimeIdle',
+            moveAnimation: 'slimeWalk',
+            soundKey: 'slimeSound',
+            x: spawn.x,
+            y: spawn.y,
+            speed: 55,
+            chaseDistance: 190,
+            scale: 0.45,
+            body: { width: 58, height: 34, offsetX: 49, offsetY: 90 }
+        }));
+        const ratConfigs = objectSpawns.rats.map((spawn, index): EnemyConfig => ({
+            id: `rat-${index + 1}`,
+            texture: 'ratIdle',
+            idleAnimation: 'ratIdle',
+            moveAnimation: 'ratRun',
+            soundKey: 'ratSound',
+            x: spawn.x,
+            y: spawn.y,
+            speed: 85,
+            chaseDistance: 210,
+            scale: 0.75,
+            body: { width: 34, height: 20, offsetX: 18, offsetY: 38 }
+        }));
+        const enemyConfigs: EnemyConfig[] = [...slimeConfigs, ...ratConfigs];
 
         this.enemies = enemyConfigs.map((config) => {
             const sprite = this.physics.add.sprite(config.x, config.y, config.texture, 0);

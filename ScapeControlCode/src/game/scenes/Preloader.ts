@@ -92,7 +92,7 @@ export class Preloader extends Scene
         this.load.image('tilesWalls', 'tilesWalls.png');
 
         // Load the tilemap
-        this.load.tilemapTiledJSON('map', 'mapPhase3.json');
+        this.load.tilemapTiledJSON('map', 'MapPhase3.json');
     }
 
     create ()
