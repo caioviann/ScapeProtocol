@@ -47,6 +47,7 @@ interface EnemyConfig {
     texture: string;
     idleAnimation: string;
     moveAnimation: string;
+    soundKey: string;
     x: number;
     y: number;
     speed: number;
@@ -84,6 +85,7 @@ export class Game extends Scene {
     private roomPresenceEvent?: Phaser.Time.TimerEvent;
     private darknessOverlay?: Phaser.GameObjects.Rectangle;
     private playerLightMask?: Phaser.GameObjects.Graphics;
+    private enemySoundCooldowns = new Map<string, number>();
 
     constructor() {
         super('Game');
@@ -198,6 +200,7 @@ export class Game extends Scene {
             mqttService.unsubscribe(this.mqttTopic);
             this.remotePlayers = [];
             this.enemies = [];
+            this.enemySoundCooldowns.clear();
             this.playerWasHit = false;
             this.darknessOverlay?.destroy();
             this.playerLightMask?.destroy();
@@ -446,6 +449,7 @@ export class Game extends Scene {
                 texture: 'slimeIdle',
                 idleAnimation: 'slimeIdle',
                 moveAnimation: 'slimeWalk',
+                soundKey: 'slimeSound',
                 x: 728,
                 y: 152,
                 speed: 55,
@@ -458,6 +462,7 @@ export class Game extends Scene {
                 texture: 'slimeIdle',
                 idleAnimation: 'slimeIdle',
                 moveAnimation: 'slimeWalk',
+                soundKey: 'slimeSound',
                 x: 792,
                 y: 152,
                 speed: 55,
@@ -470,6 +475,7 @@ export class Game extends Scene {
                 texture: 'ratIdle',
                 idleAnimation: 'ratIdle',
                 moveAnimation: 'ratRun',
+                soundKey: 'ratSound',
                 x: 600,
                 y: 320,
                 speed: 85,
@@ -482,6 +488,7 @@ export class Game extends Scene {
                 texture: 'ratIdle',
                 idleAnimation: 'ratIdle',
                 moveAnimation: 'ratRun',
+                soundKey: 'ratSound',
                 x: 640,
                 y: 352,
                 speed: 85,
@@ -494,6 +501,7 @@ export class Game extends Scene {
                 texture: 'ratIdle',
                 idleAnimation: 'ratIdle',
                 moveAnimation: 'ratRun',
+                soundKey: 'ratSound',
                 x: 704,
                 y: 384,
                 speed: 85,
@@ -538,6 +546,7 @@ export class Game extends Scene {
             if (target && Phaser.Math.Distance.Between(enemy.sprite.x, enemy.sprite.y, target.x, target.y) <= enemy.config.chaseDistance) {
                 destination = new Phaser.Math.Vector2(target.x, target.y);
                 speed = enemy.config.speed;
+                this.playEnemySound(enemy.config.soundKey, time);
             } else if (time >= enemy.nextWanderAt || Phaser.Math.Distance.Between(enemy.sprite.x, enemy.sprite.y, enemy.wanderTarget.x, enemy.wanderTarget.y) < 8) {
                 enemy.wanderTarget.set(
                     Phaser.Math.Clamp(enemy.home.x + Phaser.Math.Between(-90, 90), 24, this.mapWidth - 24),
@@ -558,6 +567,19 @@ export class Game extends Scene {
                 enemy.sprite.anims.play(enemy.config.idleAnimation, true);
             }
         }
+    }
+
+    private playEnemySound(soundKey: string, time: number) {
+        const nextSoundAt = this.enemySoundCooldowns.get(soundKey) ?? 0;
+
+        if (time < nextSoundAt) {
+            return;
+        }
+
+        this.sound.play(soundKey, {
+            volume: 0.55
+        });
+        this.enemySoundCooldowns.set(soundKey, time + 1800);
     }
 
     private getClosestPlayer(x: number, y: number) {
