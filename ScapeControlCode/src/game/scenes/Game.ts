@@ -104,6 +104,9 @@ const FALLBACK_RAT_SPAWNS = [
     { x: 990, y: 680 }
 ];
 
+type EnemyAIState = 'idle' | 'patrol' | 'alert' | 'chase' | 'search';
+type EnemyTarget = Phaser.GameObjects.Sprite | Phaser.Physics.Arcade.Sprite;
+
 interface EnemyConfig {
     id: string;
     texture: string;
@@ -114,6 +117,12 @@ interface EnemyConfig {
     y: number;
     speed: number;
     chaseDistance: number;
+    loseDistance: number;
+    hearingDistance: number;
+    alertRadius: number;
+    memoryDurationMs: number;
+    patrolRadiusX: number;
+    patrolRadiusY: number;
     scale: number;
     body: {
         width: number;
@@ -128,6 +137,10 @@ interface Enemy {
     sprite: Phaser.Physics.Arcade.Sprite;
     home: Phaser.Math.Vector2;
     wanderTarget: Phaser.Math.Vector2;
+    lastKnownTarget: Phaser.Math.Vector2 | null;
+    lastSeenAt: number;
+    state: EnemyAIState;
+    stateUntil: number;
     nextWanderAt: number;
 }
 
@@ -567,6 +580,12 @@ export class Game extends Scene {
             y: spawn.y,
             speed: 55,
             chaseDistance: 190,
+            loseDistance: 260,
+            hearingDistance: 120,
+            alertRadius: 150,
+            memoryDurationMs: 1800,
+            patrolRadiusX: 90,
+            patrolRadiusY: 70,
             scale: 0.45,
             body: { width: 58, height: 34, offsetX: 49, offsetY: 90 }
         }));
@@ -580,6 +599,12 @@ export class Game extends Scene {
             y: spawn.y,
             speed: 85,
             chaseDistance: 210,
+            loseDistance: 300,
+            hearingDistance: 170,
+            alertRadius: 190,
+            memoryDurationMs: 2400,
+            patrolRadiusX: 120,
+            patrolRadiusY: 90,
             scale: 0.75,
             body: { width: 34, height: 20, offsetX: 18, offsetY: 38 }
         }));
@@ -604,6 +629,10 @@ export class Game extends Scene {
                 sprite,
                 home: new Phaser.Math.Vector2(config.x, config.y),
                 wanderTarget: new Phaser.Math.Vector2(config.x, config.y),
+                lastKnownTarget: null,
+                lastSeenAt: 0,
+                state: 'patrol',
+                stateUntil: 0,
                 nextWanderAt: 0
             };
         });
@@ -643,31 +672,8 @@ export class Game extends Scene {
                 }
             }
 
-            let destination = enemy.wanderTarget;
-            let speed = enemy.config.speed * 0.45;
-
-            if (target && Phaser.Math.Distance.Between(enemy.sprite.x, enemy.sprite.y, target.x, target.y) <= enemy.config.chaseDistance) {
-                destination = new Phaser.Math.Vector2(target.x, target.y);
-                speed = enemy.config.speed;
-            } else if (time >= enemy.nextWanderAt || Phaser.Math.Distance.Between(enemy.sprite.x, enemy.sprite.y, enemy.wanderTarget.x, enemy.wanderTarget.y) < 8) {
-                enemy.wanderTarget.set(
-                    Phaser.Math.Clamp(enemy.home.x + Phaser.Math.Between(-90, 90), 24, this.mapWidth - 24),
-                    Phaser.Math.Clamp(enemy.home.y + Phaser.Math.Between(-70, 70), 24, this.mapHeight - 24)
-                );
-                enemy.nextWanderAt = time + Phaser.Math.Between(1200, 2600);
-                destination = enemy.wanderTarget;
-            }
-
-            const distance = Phaser.Math.Distance.Between(enemy.sprite.x, enemy.sprite.y, destination.x, destination.y);
-
-            if (distance > 6) {
-                this.physics.moveToObject(enemy.sprite, destination, speed);
-                enemy.sprite.flipX = body.velocity.x < 0;
-                enemy.sprite.anims.play(enemy.config.moveAnimation, true);
-            } else {
-                body.setVelocity(0);
-                enemy.sprite.anims.play(enemy.config.idleAnimation, true);
-            }
+            this.updateEnemyAI(enemy, target, time);
+            this.moveEnemyFromAI(enemy, body);
         }
 
         for (const [soundKey, settings] of Object.entries(ENEMY_SOUND_SETTINGS)) {
@@ -683,6 +689,235 @@ export class Game extends Scene {
                 this.playContinuousEnemySound(soundKey, distance);
             }
         }
+    }
+
+    private updateEnemyAI(enemy: Enemy, target: EnemyTarget | null, time: number) {
+        if (target) {
+            const targetDistance = Phaser.Math.Distance.Between(enemy.sprite.x, enemy.sprite.y, target.x, target.y);
+            const canSeeTarget = targetDistance <= enemy.config.chaseDistance && this.isTargetInEnemyVision(enemy, target);
+            const canHearTarget = targetDistance <= enemy.config.hearingDistance && this.isTargetMakingNoise(target);
+
+            if (canSeeTarget) {
+                enemy.state = 'chase';
+                enemy.lastKnownTarget = new Phaser.Math.Vector2(target.x, target.y);
+                enemy.lastSeenAt = time;
+                enemy.stateUntil = time + 900;
+                this.alertNearbyEnemies(enemy, target, time);
+                return;
+            }
+
+            if (enemy.state === 'chase' && targetDistance <= enemy.config.loseDistance) {
+                enemy.lastKnownTarget = new Phaser.Math.Vector2(target.x, target.y);
+                enemy.lastSeenAt = time;
+                return;
+            }
+
+            if (canHearTarget && enemy.state !== 'chase') {
+                enemy.state = 'alert';
+                enemy.lastKnownTarget = new Phaser.Math.Vector2(target.x, target.y);
+                enemy.stateUntil = time + 900;
+                this.alertNearbyEnemies(enemy, target, time, false);
+                return;
+            }
+        }
+
+        if (enemy.state === 'chase') {
+            const stillRemembersTarget = enemy.lastKnownTarget && time - enemy.lastSeenAt <= enemy.config.memoryDurationMs;
+
+            enemy.state = stillRemembersTarget ? 'search' : 'patrol';
+            enemy.stateUntil = time + 1400;
+            return;
+        }
+
+        if (enemy.state === 'alert') {
+            if (time >= enemy.stateUntil) {
+                enemy.state = enemy.lastKnownTarget ? 'search' : 'patrol';
+                enemy.stateUntil = time + 1200;
+            }
+
+            return;
+        }
+
+        if (enemy.state === 'search') {
+            const lastKnownTarget = enemy.lastKnownTarget;
+            const reachedLastKnownTarget = lastKnownTarget
+                ? Phaser.Math.Distance.Between(enemy.sprite.x, enemy.sprite.y, lastKnownTarget.x, lastKnownTarget.y) < 10
+                : true;
+
+            if (reachedLastKnownTarget || time >= enemy.stateUntil) {
+                enemy.state = 'patrol';
+                enemy.lastKnownTarget = null;
+                enemy.nextWanderAt = 0;
+            }
+
+            return;
+        }
+
+        if (enemy.state === 'idle' && time < enemy.stateUntil) {
+            return;
+        }
+
+        if (enemy.state === 'idle') {
+            enemy.state = 'patrol';
+            enemy.nextWanderAt = 0;
+        }
+
+        if (time >= enemy.nextWanderAt || Phaser.Math.Distance.Between(enemy.sprite.x, enemy.sprite.y, enemy.wanderTarget.x, enemy.wanderTarget.y) < 8) {
+            if (Phaser.Math.Between(0, 100) < 30) {
+                enemy.state = 'idle';
+                enemy.stateUntil = time + Phaser.Math.Between(500, 1200);
+                return;
+            }
+
+            enemy.state = 'patrol';
+            enemy.wanderTarget.set(
+                Phaser.Math.Clamp(enemy.home.x + Phaser.Math.Between(-enemy.config.patrolRadiusX, enemy.config.patrolRadiusX), 24, this.mapWidth - 24),
+                Phaser.Math.Clamp(enemy.home.y + Phaser.Math.Between(-enemy.config.patrolRadiusY, enemy.config.patrolRadiusY), 24, this.mapHeight - 24)
+            );
+            enemy.nextWanderAt = time + Phaser.Math.Between(1200, 2600);
+        }
+    }
+
+    private isTargetInEnemyVision(enemy: Enemy, target: EnemyTarget) {
+        const distance = Phaser.Math.Distance.Between(enemy.sprite.x, enemy.sprite.y, target.x, target.y);
+
+        if (distance <= enemy.config.chaseDistance * 0.42) {
+            return true;
+        }
+
+        const body = enemy.sprite.body as Phaser.Physics.Arcade.Body;
+        const facingAngle = body.velocity.lengthSq() > 1
+            ? body.velocity.angle()
+            : Phaser.Math.Angle.Between(enemy.sprite.x, enemy.sprite.y, enemy.wanderTarget.x, enemy.wanderTarget.y);
+        const targetAngle = Phaser.Math.Angle.Between(enemy.sprite.x, enemy.sprite.y, target.x, target.y);
+        const angleDifference = Math.abs(Phaser.Math.Angle.Wrap(targetAngle - facingAngle));
+
+        return angleDifference <= Phaser.Math.DegToRad(115);
+    }
+
+    private isTargetMakingNoise(target: EnemyTarget) {
+        if (target === this.player) {
+            const body = this.player.body as Phaser.Physics.Arcade.Body;
+
+            return body.velocity.lengthSq() > 400;
+        }
+
+        return Boolean(target.anims.currentAnim);
+    }
+
+    private alertNearbyEnemies(sourceEnemy: Enemy, target: EnemyTarget, time: number, escalateToChase = true) {
+        for (const enemy of this.enemies) {
+            if (enemy === sourceEnemy || enemy.state === 'chase') {
+                continue;
+            }
+
+            const distanceFromSource = Phaser.Math.Distance.Between(sourceEnemy.sprite.x, sourceEnemy.sprite.y, enemy.sprite.x, enemy.sprite.y);
+
+            if (distanceFromSource > sourceEnemy.config.alertRadius) {
+                continue;
+            }
+
+            enemy.lastKnownTarget = new Phaser.Math.Vector2(target.x, target.y);
+            enemy.lastSeenAt = time;
+
+            if (escalateToChase && distanceFromSource <= sourceEnemy.config.alertRadius * 0.55) {
+                enemy.state = 'chase';
+                enemy.stateUntil = time + 700;
+            } else {
+                enemy.state = 'alert';
+                enemy.stateUntil = time + Phaser.Math.Between(700, 1300);
+            }
+        }
+    }
+
+    private moveEnemyFromAI(enemy: Enemy, body: Phaser.Physics.Arcade.Body) {
+        const movement = this.getEnemyMovement(enemy);
+
+        if (!movement) {
+            body.setVelocity(0);
+            enemy.sprite.anims.play(enemy.config.idleAnimation, true);
+            return;
+        }
+
+        const distance = Phaser.Math.Distance.Between(enemy.sprite.x, enemy.sprite.y, movement.destination.x, movement.destination.y);
+
+        if (distance <= 6) {
+            body.setVelocity(0);
+            enemy.sprite.anims.play(enemy.config.idleAnimation, true);
+            return;
+        }
+
+        const desiredVelocity = new Phaser.Math.Vector2(
+            movement.destination.x - enemy.sprite.x,
+            movement.destination.y - enemy.sprite.y
+        ).normalize().scale(movement.speed);
+        const separationVelocity = this.getEnemySeparationVelocity(enemy).scale(movement.speed);
+        const finalVelocity = desiredVelocity.add(separationVelocity);
+
+        if (finalVelocity.lengthSq() > movement.speed * movement.speed) {
+            finalVelocity.normalize().scale(movement.speed);
+        }
+
+        body.setVelocity(finalVelocity.x, finalVelocity.y);
+        enemy.sprite.flipX = body.velocity.x < 0;
+        enemy.sprite.anims.play(enemy.config.moveAnimation, true);
+    }
+
+    private getEnemyMovement(enemy: Enemy): { destination: Phaser.Math.Vector2; speed: number } | null {
+        if (enemy.state === 'chase' && enemy.lastKnownTarget) {
+            return {
+                destination: enemy.lastKnownTarget,
+                speed: enemy.config.speed
+            };
+        }
+
+        if (enemy.state === 'search' && enemy.lastKnownTarget) {
+            return {
+                destination: enemy.lastKnownTarget,
+                speed: enemy.config.speed * 0.65
+            };
+        }
+
+        if (enemy.state === 'alert' && enemy.lastKnownTarget) {
+            return {
+                destination: enemy.lastKnownTarget,
+                speed: enemy.config.speed * 0.35
+            };
+        }
+
+        if (enemy.state === 'patrol') {
+            return {
+                destination: enemy.wanderTarget,
+                speed: enemy.config.speed * 0.45
+            };
+        }
+
+        return null;
+    }
+
+    private getEnemySeparationVelocity(enemy: Enemy) {
+        const separation = new Phaser.Math.Vector2(0, 0);
+
+        for (const otherEnemy of this.enemies) {
+            if (otherEnemy === enemy) {
+                continue;
+            }
+
+            const distance = Phaser.Math.Distance.Between(enemy.sprite.x, enemy.sprite.y, otherEnemy.sprite.x, otherEnemy.sprite.y);
+
+            if (distance <= 0 || distance > 38) {
+                continue;
+            }
+
+            separation.x += (enemy.sprite.x - otherEnemy.sprite.x) / distance;
+            separation.y += (enemy.sprite.y - otherEnemy.sprite.y) / distance;
+        }
+
+        if (separation.lengthSq() === 0) {
+            return separation;
+        }
+
+        return separation.normalize().scale(0.45);
     }
 
     private playEnemySound(soundKey: string, time: number, distance: number) {
