@@ -50,6 +50,79 @@ We have provided a default project structure to get you started. This is as foll
 | `src/game/main.ts`           | Game entry point: configures and starts the game.          |
 | `src/game/scenes`            | Folder with all Phaser game scenes.                        |
 
+## IA dos NPCs Monstros
+
+A IA dos NPCs monstros esta implementada em `src/game/scenes/Game.ts`. Ela roda dentro do loop principal da cena `Game`, no metodo `updateEnemies(time)`, que e chamado a cada frame pelo metodo `update(time, _delta)`.
+
+### Onde esta implementada
+
+| Arquivo/metodo | Responsabilidade |
+|----------------|------------------|
+| `src/game/scenes/Game.ts` | Cena principal do jogo e sistema de IA dos monstros. |
+| `EnemyAIState` | Define os estados possiveis da IA: `idle`, `patrol`, `alert`, `chase` e `search`. |
+| `EnemyConfig` | Define os parametros de comportamento de cada tipo de monstro. |
+| `Enemy` | Guarda o estado atual de IA de cada monstro instanciado. |
+| `createEnemies(...)` | Cria slimes e ratos, configura corpo fisico, animacoes, colisao e parametros de IA. |
+| `updateEnemies(time)` | Atualiza som, escolhe alvo e chama a IA de cada monstro a cada frame. |
+| `updateEnemyAI(enemy, target, time)` | Decide o estado atual do monstro com base em visao, audicao, memoria e alertas. |
+| `isTargetInEnemyVision(enemy, target)` | Calcula se o alvo esta dentro do campo de visao do monstro. |
+| `isTargetMakingNoise(target)` | Verifica se o alvo esta fazendo barulho, usado pela audicao dos monstros. |
+| `alertNearbyEnemies(sourceEnemy, target, time, escalateToChase)` | Faz monstros proximos reagirem quando um monstro percebe o jogador. |
+| `moveEnemyFromAI(enemy, body)` | Converte a decisao da IA em velocidade fisica no Arcade Physics. |
+| `getEnemyMovement(enemy)` | Define destino e velocidade conforme o estado atual de IA. |
+| `getEnemySeparationVelocity(enemy)` | Evita que monstros fiquem empilhados uns sobre os outros. |
+
+### Estados da IA
+
+| Estado | O que faz |
+|--------|-----------|
+| `idle` | O monstro fica parado por um curto intervalo antes de voltar a patrulhar. |
+| `patrol` | O monstro anda ao redor do ponto onde nasceu, escolhendo destinos aleatorios dentro de um raio configurado. |
+| `alert` | O monstro ouviu algo ou foi avisado por outro monstro. Ele anda mais devagar ate a posicao suspeita. |
+| `chase` | O monstro viu o jogador ou recebeu alerta forte e passa a perseguir o alvo. |
+| `search` | O monstro perdeu o jogador, mas ainda lembra a ultima posicao conhecida e vai investigar esse ponto. |
+
+### O que a IA faz durante o jogo
+
+- Patrulha uma area ao redor do spawn do monstro.
+- Alterna entre patrulhar e ficar parado para o movimento parecer menos mecanico.
+- Detecta o jogador por visao usando distancia e angulo de visao.
+- Detecta o jogador por audicao quando o jogador se move perto do monstro.
+- Guarda a ultima posicao conhecida do jogador em `lastKnownTarget`.
+- Usa `lastSeenAt` e `memoryDurationMs` para controlar quanto tempo o monstro lembra do alvo.
+- Quando perde o jogador, entra em `search` e investiga a ultima posicao conhecida.
+- Quando um monstro detecta o jogador, ele alerta monstros proximos dentro de `alertRadius`.
+- Monstros muito proximos do alerta podem entrar direto em `chase`.
+- Monstros mais distantes entram em `alert` e investigam com mais cautela.
+- Usa separacao entre monstros para reduzir sobreposicao durante movimento em grupo.
+- Mantem animacoes coerentes: animacao de movimento quando esta andando e animacao idle quando esta parado.
+
+### Parametros de IA por tipo de monstro
+
+Os parametros ficam em `createEnemies(...)`, dentro dos objetos `slimeConfigs` e `ratConfigs`.
+
+| Parametro | Slime | Rat | Efeito |
+|-----------|-------|-----|--------|
+| `speed` | `55` | `85` | Velocidade base do monstro. |
+| `chaseDistance` | `190` | `210` | Distancia maxima para detectar visualmente o jogador. |
+| `loseDistance` | `260` | `300` | Distancia em que o monstro ainda consegue manter a perseguicao antes de perder o alvo. |
+| `hearingDistance` | `120` | `170` | Distancia em que o monstro consegue ouvir o jogador em movimento. |
+| `alertRadius` | `150` | `190` | Raio usado para alertar outros monstros proximos. |
+| `memoryDurationMs` | `1800` | `2400` | Tempo, em milissegundos, que o monstro lembra a ultima posicao do jogador. |
+| `patrolRadiusX` | `90` | `120` | Alcance horizontal da patrulha em torno do spawn. |
+| `patrolRadiusY` | `70` | `90` | Alcance vertical da patrulha em torno do spawn. |
+
+### Fluxo resumido
+
+1. `update(time, _delta)` atualiza o jogador e chama `updateEnemies(time)`.
+2. `updateEnemies(time)` encontra o jogador mais proximo com `getClosestPlayer(...)`.
+3. Para cada monstro, `updateEnemyAI(...)` decide o estado atual.
+4. Se o jogador esta visivel, o monstro entra em `chase`.
+5. Se o jogador nao esta visivel, mas esta fazendo barulho perto, o monstro entra em `alert`.
+6. Se o monstro perde o jogador, ele entra em `search` e vai ate `lastKnownTarget`.
+7. Se nada foi detectado, ele volta para `patrol` ou `idle`.
+8. `moveEnemyFromAI(...)` aplica a velocidade no corpo fisico do monstro.
+
 
 ## Handling Assets
 
