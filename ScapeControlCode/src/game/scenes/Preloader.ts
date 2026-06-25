@@ -33,6 +33,9 @@ export class Preloader extends Scene
         this.load.setPath('assets');
 
         this.load.image('logo', 'MainMenu.png');
+        this.load.image('menuBackground', 'img/menu_img.png');
+        this.load.image('gameOverBackground', 'img/gameover_img.png');
+        this.load.image('victoryBackground', 'img/victory_img.png');
         this.load.spritesheet('playerFront', 'person/Personagem-Principal-Front-Left.png', {
             frameWidth: 16,
             frameHeight: 32

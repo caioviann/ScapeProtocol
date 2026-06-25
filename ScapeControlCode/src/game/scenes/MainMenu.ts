@@ -60,19 +60,10 @@ export class MainMenu extends Scene {
     create() {
         this.startBackgroundMusic();
 
-        this.add.image(512, 384, 'background').setDisplaySize(1024, 768).setAlpha(0.9);
+        this.add.image(512, 384, 'menuBackground').setDisplaySize(1024, 768);
         this.add.rectangle(512, 384, 1024, 768, 0x05080d, 0.62);
 
-        this.add.text(512, 70, 'SCAPE PROTOCOL', {
-            fontFamily: 'Arial Black',
-            fontSize: 42,
-            color: '#ffffff',
-            stroke: '#111111',
-            strokeThickness: 8,
-            align: 'center'
-        }).setOrigin(0.5);
-
-        this.roomCodeText = this.add.text(512, 122, 'Crie uma sala, nomeie ou entre em uma sala aberta.', {
+        this.roomCodeText = this.add.text(512, 132, 'Crie uma sala, nomeie ou entre em uma sala aberta.', {
             fontFamily: 'Arial',
             fontSize: 20,
             color: '#d5f3ff',
