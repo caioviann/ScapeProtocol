@@ -36,6 +36,17 @@ The local development server runs on `http://localhost:8080` by default. Please 
 
 Once the server is running you can edit any of the files in the `src` folder. Webpack will automatically recompile your code and then reload the browser.
 
+## Controles
+
+O jogo aceita teclado e controle via Gamepad API do navegador.
+
+| Acao | Teclado | Controle PS4 |
+|------|---------|--------------|
+| Mover jogador | Setas direcionais | Analogico esquerdo ou D-pad |
+| Recomecar na tela de fim de jogo | `Enter` | Botao `X` |
+
+Para testar com controle no navegador, conecte o controle, abra o jogo e pressione algum botao do controle uma vez depois que a pagina carregar. Alguns navegadores so liberam a leitura do controle depois dessa primeira interacao.
+
 ## Template Project Structure
 
 We have provided a default project structure to get you started. This is as follows:
