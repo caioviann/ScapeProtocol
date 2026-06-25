@@ -363,3 +363,15 @@ Os parametros ficam em `createEnemies(...)`, dentro dos objetos `slimeConfigs` e
 6. Se o monstro perde o jogador, ele entra em `search` e vai ate `lastKnownTarget`.
 7. Se nada foi detectado, ele volta para `patrol` ou `idle`.
 8. `moveEnemyFromAI(...)` aplica a velocidade no corpo fisico do monstro.
+## Controles
+
+O jogo aceita teclado e controle via Gamepad API do navegador.
+
+| Acao | Teclado | Controle PS4 |
+|------|---------|--------------|
+| Mover jogador | Setas direcionais | Analogico esquerdo ou D-pad |
+| Recomecar na tela de fim de jogo | `Enter` | Botao `X` |
+
+Para testar com controle no navegador, conecte o controle, abra o jogo e pressione algum botao do controle uma vez depois que a pagina carregar. Alguns navegadores so liberam a leitura do controle depois dessa primeira interacao.
+
+## Template Project Structure
