@@ -23,6 +23,14 @@ interface PlayerCharacter {
     };
 }
 
+type PlayerDirection = 'down' | 'left' | 'right' | 'up';
+
+interface PlayerMovementInput {
+    x: number;
+    y: number;
+    direction: PlayerDirection | null;
+}
+
 const RADIOACTIVE_FRAME_ORIGINS: Record<string, Record<number, number>> = {
     radioactiveFrontRight: {
         0: 7 / 26,
@@ -103,6 +111,15 @@ const FALLBACK_RAT_SPAWNS = [
     { x: 640, y: 672 },
     { x: 990, y: 680 }
 ];
+
+const GAMEPAD_AXIS_DEADZONE = 0.25;
+const GAMEPAD_BUTTON_DEADZONE = 0.5;
+const GAMEPAD_BUTTONS = {
+    dpadUp: 12,
+    dpadDown: 13,
+    dpadLeft: 14,
+    dpadRight: 15
+};
 
 type EnemyAIState = 'idle' | 'patrol' | 'alert' | 'chase' | 'search';
 type EnemyTarget = Phaser.GameObjects.Sprite | Phaser.Physics.Arcade.Sprite;
@@ -316,40 +333,18 @@ export class Game extends Scene {
 
         const speed = this.playerSpeed;
         const body = this.player.body as Phaser.Physics.Arcade.Body;
+        const movement = this.getPlayerMovementInput();
         body.setVelocity(0);
-        let moved = false;
 
-        if (this.cursors.left?.isDown) {
-            body.setVelocityX(-speed);
-            this.player.anims.play(this.playerCharacter.animations.left, true);
-            this.player.flipX = false;
-            moved = true;
-        }
-        else if (this.cursors.right?.isDown) {
-            body.setVelocityX(speed);
-            this.player.anims.play(this.playerCharacter.animations.right, true);
-            this.player.flipX = false;
-            moved = true;
-        }
-
-        if (this.cursors.up?.isDown) {
-            body.setVelocityY(-speed);
-            this.player.anims.play(this.playerCharacter.animations.up, true);
-            this.player.flipX = false;
-            moved = true;
-        }
-        else if (this.cursors.down?.isDown) {
-            body.setVelocityY(speed);
-            this.player.anims.play(this.playerCharacter.animations.down, true);
-            this.player.flipX = false;
-            moved = true;
-        }
-
-        if (moved) {
+        if (movement.x !== 0 || movement.y !== 0) {
+            body.setVelocity(movement.x * speed, movement.y * speed);
             body.velocity.normalize().scale(speed);
+            if (movement.direction) {
+                this.player.anims.play(this.playerCharacter.animations[movement.direction], true);
+                this.player.flipX = false;
+            }
         }
-
-        if (!moved) {
+        else {
             this.player.anims.stop();
             this.player.setTexture(this.playerCharacter.idleTexture, this.playerCharacter.idleFrame);
             this.applyRadioactiveSpriteOrigin(this.player);
@@ -385,6 +380,97 @@ export class Game extends Scene {
         );
 
         this.updateEnemies(time);
+    }
+
+    private getPlayerMovementInput(): PlayerMovementInput {
+        const keyboardX = this.getKeyboardAxis(this.cursors.left?.isDown, this.cursors.right?.isDown);
+        const keyboardY = this.getKeyboardAxis(this.cursors.up?.isDown, this.cursors.down?.isDown);
+        const gamepad = this.getGamepadMovementInput();
+        const x = keyboardX !== 0 ? keyboardX : gamepad.x;
+        const y = keyboardY !== 0 ? keyboardY : gamepad.y;
+
+        return {
+            x,
+            y,
+            direction: this.getMovementDirection(x, y)
+        };
+    }
+
+    private getKeyboardAxis(negativePressed = false, positivePressed = false) {
+        if (negativePressed) {
+            return -1;
+        }
+
+        if (positivePressed) {
+            return 1;
+        }
+
+        return 0;
+    }
+
+    private getGamepadMovementInput(): { x: number; y: number } {
+        const gamepad = this.getActiveGamepad();
+
+        if (!gamepad) {
+            return { x: 0, y: 0 };
+        }
+
+        const axisX = this.applyGamepadDeadzone(gamepad.axes[0] ?? 0);
+        const axisY = this.applyGamepadDeadzone(gamepad.axes[1] ?? 0);
+        const dpadX = this.getGamepadButtonAxis(gamepad, GAMEPAD_BUTTONS.dpadLeft, GAMEPAD_BUTTONS.dpadRight);
+        const dpadY = this.getGamepadButtonAxis(gamepad, GAMEPAD_BUTTONS.dpadUp, GAMEPAD_BUTTONS.dpadDown);
+
+        return {
+            x: dpadX !== 0 ? dpadX : axisX,
+            y: dpadY !== 0 ? dpadY : axisY
+        };
+    }
+
+    private getActiveGamepad() {
+        if (!navigator.getGamepads) {
+            return null;
+        }
+
+        return navigator.getGamepads().find((gamepad) => gamepad?.connected) ?? null;
+    }
+
+    private applyGamepadDeadzone(value: number) {
+        return Math.abs(value) >= GAMEPAD_AXIS_DEADZONE ? value : 0;
+    }
+
+    private getGamepadButtonAxis(gamepad: Gamepad, negativeButtonIndex: number, positiveButtonIndex: number) {
+        const negativePressed = (gamepad.buttons[negativeButtonIndex]?.value ?? 0) > GAMEPAD_BUTTON_DEADZONE;
+        const positivePressed = (gamepad.buttons[positiveButtonIndex]?.value ?? 0) > GAMEPAD_BUTTON_DEADZONE;
+
+        if (negativePressed) {
+            return -1;
+        }
+
+        if (positivePressed) {
+            return 1;
+        }
+
+        return 0;
+    }
+
+    private getMovementDirection(x: number, y: number): PlayerDirection | null {
+        if (y < 0) {
+            return 'up';
+        }
+
+        if (y > 0) {
+            return 'down';
+        }
+
+        if (x < 0) {
+            return 'left';
+        }
+
+        if (x > 0) {
+            return 'right';
+        }
+
+        return null;
     }
 
     private createPlayerLight() {
